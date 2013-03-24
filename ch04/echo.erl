@@ -1,19 +1,26 @@
 -module (echo).
--export ([go/0, loop/0]).
+-export ([start/0, print/1, stop/0, server/0]).
 
-go() ->
-	register(echo, spawn(echo, loop, [])),
-	echo ! {self(), hello},
+start() ->
+	register(echo, spawn(echo, server, [])).
+	
+print(Term) ->
+	echo ! {self(), {message, Term}},
 	receive
-		{_Pid, Msg} ->
-			io:format("~w~n", [Msg])
+		{response, Msg} ->
+			io:format("~w~n", [Msg]);
+		_Other ->
+			{error, unknown_message}
 	end.
 	
-loop() ->
+stop() ->
+	echo ! {self(), stop}.
+	
+server() ->
 	receive
-		{From, Msg} ->
-			From ! {self(), Msg},
-			loop();
-		stop ->
-			true
+		{Pid, {message, Msg}} ->
+			Pid ! {response, Msg},
+			server();
+		{Pid, stop} ->
+			Pid ! ok
 	end.
